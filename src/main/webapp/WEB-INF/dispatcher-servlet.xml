@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans.xsd
+           http://www.springframework.org/schema/context
+           http://www.springframework.org/schema/context/spring-context.xsd
+           http://www.springframework.org/schema/mvc
+           http://www.springframework.org/schema/mvc/spring-mvc.xsd
+           http://www.springframework.org/schema/tx
+           http://www.springframework.org/schema/tx/spring-tx.xsd
+           http://www.springframework.org/schema/data/jpa
+           http://www.springframework.org/schema/data/jpa/spring-jpa.xsd">
+
+    <!-- Scan package chứa Controller, Service, Entity -->
+    <context:component-scan base-package="controllers,services,util,entities,config"/>
+    <context:annotation-config/>
+
+    <!-- Kích hoạt @Controller, @RequestMapping -->
+    <mvc:annotation-driven/>
+
+    <!-- Load properties; cho phép ENV/ -D override -->
+    <context:property-placeholder
+            location="classpath:application.properties"
+            system-properties-mode="OVERRIDE"
+            ignore-unresolvable="true"/>
+
+    <context:property-placeholder location="classpath:application.properties"/>
+
+    <bean id="cryptoService" class="auth.CryptoService">
+        <!-- Bơm khóa Base64 từ properties -->
+        <constructor-arg value="${chat.crypto.key}"/>
+    </bean>
+    <!-- Static resources (CSS, JS, hình ảnh) -->
+    <mvc:resources mapping="/assets/**" location="/WEB-INF/views/assets/"/>
+
+    <!-- View Resolver cho JSP -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/views/"/>
+        <property name="suffix" value=".jsp"/>
+        <property name="contentType" value="text/html; charset=UTF-8"/>
+    </bean>
+
+    <!-- DataSource PostgreSQL -->
+    <bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+        <property name="driverClassName" value="org.postgresql.Driver"/>
+        <property name="url" value="jdbc:postgresql://localhost:5432/SEP490"/>
+        <property name="username" value="postgres"/>
+        <property name="password" value="123"/>
+    </bean>
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <constructor-arg ref="dataSource"/>
+    </bean>
+
+    <bean id="multipartResolver"
+          class="org.springframework.web.multipart.support.StandardServletMultipartResolver"/>
+
+
+    <!-- JPA EntityManagerFactory -->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="dataSource" ref="dataSource"/>
+        <property name="packagesToScan" value="entities"/>
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <property name="showSql" value="true"/>
+                <property name="generateDdl" value="true"/>
+                <property name="databasePlatform" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            </bean>
+        </property>
+        <property name="jpaProperties">
+            <props>
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+                <prop key="hibernate.format_sql">true</prop>
+            </props>
+        </property>
+    </bean>
+    <bean class="org.springframework.context.support.PropertySourcesPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:application.properties</value>
+            </list>
+        </property>
+        <property name="ignoreUnresolvablePlaceholders" value="false"/>
+        <property name="order" value="0"/>
+    </bean>
+    <!-- Transaction Manager -->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory"/>
+    </bean>
+
+    <!-- Cấu hình JavaMailSender -->
+    <bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+        <property name="host" value="${mail.host}"/>
+        <property name="port" value="${mail.port}"/>
+        <property name="username" value="${mail.username}"/>
+        <property name="password" value="${mail.password}"/>
+        <property name="defaultEncoding" value="${mail.default-encoding:UTF-8}"/>
+        <property name="javaMailProperties">
+            <props>
+                <prop key="mail.transport.protocol">${mail.protocol:smtp}</prop>
+                <prop key="mail.smtp.auth">${mail.smtp.auth:true}</prop>
+                <prop key="mail.smtp.starttls.enable">${mail.smtp.starttls.enable:true}</prop>
+                <prop key="mail.smtp.starttls.required">${mail.smtp.starttls.required:false}</prop>
+                <prop key="mail.debug">${mail.debug:false}</prop>
+                <!-- timeouts (ms) -->
+                <prop key="mail.smtp.connectiontimeout">${mail.smtp.connectiontimeout:10000}</prop>
+                <prop key="mail.smtp.timeout">${mail.smtp.timeout:10000}</prop>
+                <prop key="mail.smtp.writetimeout">${mail.smtp.writetimeout:10000}</prop>
+            </props>
+        </property>
+    </bean>
+
+
+    <!-- Kích hoạt annotation @Transactional -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <mvc:interceptors>
+        <bean class="config.LoggerInterceptor"/>
+    </mvc:interceptors>
+
+    <!-- Kích hoạt Spring Data JPA repository -->
+    <jpa:repositories base-package="repositories"/>
+</beans>

@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/beans"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:sec="http://www.springframework.org/schema/security"
+             xmlns:context="http://www.springframework.org/schema/context"
+             xmlns:beans="http://www.springframework.org/schema/beans"
+             xsi:schemaLocation="
+               http://www.springframework.org/schema/beans     http://www.springframework.org/schema/beans/spring-beans.xsd
+               http://www.springframework.org/schema/security  http://www.springframework.org/schema/security/spring-security.xsd
+               http://www.springframework.org/schema/context   http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!-- Bật annotation @Secured, @PreAuthorize -->
+    <sec:global-method-security secured-annotations="enabled" pre-post-annotations="enabled"/>
+
+    <!-- Authentication Manager -->
+    <sec:authentication-manager/>
+
+    <!-- Cho phép xử lý @Configuration/@Bean -->
+    <context:annotation-config/>
+    <context:component-scan base-package="config"/>
+
+    <!-- Firewall nới lỏng -->
+    <beans:bean id="httpFirewall"
+                class="org.springframework.security.web.firewall.DefaultHttpFirewall"/>
+
+    <!-- HTTP Security -->
+    <sec:http create-session="ifRequired" use-expressions="true">
+        <sec:csrf disabled="true"/>
+
+        <!-- ========= 1. Static resources ========= -->
+        <sec:intercept-url pattern="/assets/**" access="permitAll"/>
+        <sec:intercept-url pattern="/css/**" access="permitAll"/>
+        <sec:intercept-url pattern="/js/**" access="permitAll"/>
+        <sec:intercept-url pattern="/img/**" access="permitAll"/>
+        <sec:intercept-url pattern="/webjars/**" access="permitAll"/>
+        <sec:intercept-url pattern="/favicon.ico" access="permitAll"/>
+
+        <!-- ========= 2. Public pages ========= -->
+        <sec:intercept-url pattern="/" access="permitAll"/>
+        <sec:intercept-url pattern="/signup" access="permitAll"/>
+        <sec:intercept-url pattern="/verifycodesignup" access="permitAll"/>
+
+        <!-- ========= 3. Auth / Login ========= -->
+        <sec:intercept-url pattern="/auth/**" access="permitAll"/>
+        <sec:intercept-url pattern="/auth/loginwithgg" access="permitAll"/>
+
+        <!-- ========= 4. OAuth2 & Payment webhooks ========= -->
+        <sec:intercept-url pattern="/oauth2/**" access="permitAll"/>
+        <sec:intercept-url pattern="/login/oauth2/**" access="permitAll"/>
+        <sec:intercept-url pattern="/payos/**" access="permitAll"/>
+        <sec:intercept-url pattern="/payment/**" access="permitAll"/>
+
+        <!-- ========= 5. User-facing routes ========= -->
+        <sec:intercept-url pattern="/users/**" access="permitAll"/>
+        <sec:intercept-url pattern="/employer/**" access="permitAll"/>
+        <sec:intercept-url pattern="/profile/**" access="permitAll"/>
+        <sec:intercept-url pattern="/dashboard/**" access="permitAll"/>
+
+        <!-- ========= 6. Admin routes ========= -->
+        <sec:intercept-url pattern="/admin/**" access="permitAll"/>
+
+        <!-- ========= 7. Catch-all ========= -->
+        <sec:intercept-url pattern="/**" access="isAuthenticated()"/>
+
+        <!-- ========= Login / Logout ========= -->
+        <sec:oauth2-login
+                login-page="/auth/login"
+                authentication-success-handler-ref="oauth2SuccessHandler"
+                authentication-failure-handler-ref="oauth2FailureHandler"/>
+
+        <sec:logout logout-url="/logout"
+                    success-handler-ref="customLogoutSuccessHandler"
+                    invalidate-session="true"
+                    delete-cookies="JSESSIONID"/>
+    </sec:http>
+
+    <!-- Custom Logout Success Handler -->
+    <beans:bean id="customLogoutSuccessHandler" class="config.CustomLogoutSuccessHandler">
+        <beans:constructor-arg ref="userService"/>
+    </beans:bean>
+
+    <!-- SUCCESS handler -->
+    <beans:bean id="oauth2SuccessHandler"
+                class="org.springframework.security.web.authentication.SavedRequestAwareAuthenticationSuccessHandler">
+        <beans:property name="defaultTargetUrl" value="/auth/loginwithgg?status=ok"/>
+        <beans:property name="alwaysUseDefaultTargetUrl" value="true"/>
+    </beans:bean>
+
+    <!-- FAILURE handler -->
+    <beans:bean id="oauth2FailureHandler"
+                class="org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler">
+        <beans:property name="defaultFailureUrl" value="/auth/loginwithgg?status=fail"/>
+    </beans:bean>
+<context:property-placeholder location="classpath:application.properties" />
+
+<bean id="jwtTokenService" class="auth.JwtTokenService">
+    <property name="secret" value="${jwt.secret}" />
+</bean>
+</beans:beans>

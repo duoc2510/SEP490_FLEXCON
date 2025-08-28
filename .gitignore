@@ -1,0 +1,35 @@
+
+/src/main/resources/application.properties
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+out/
+
+# VSCode (nếu có dev lẫn nhau)
+.vscode/
+
+# Build output
+target/
+build/
+classes/
+
+# Logs
+*.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Maven
+.mvn/
+!/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.war
+*.ear
+*.jar
+
+# Gradle
+.gradle/
+build/
